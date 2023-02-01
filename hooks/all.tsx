@@ -9,7 +9,7 @@ export const Network: {[key: string]: BaseNetwork} = {
         chainId: 5,
         chainName: "Ethereum Goerli Testnet",
         isTestnet: true,
-        dfkassaContract: "0x0"
+        dfkassaContract: "0xbec287d69ef466D0593F154D108f0b4E338e9539"
     }),
     BSC_TESTNET: new EthereumLikeNetwork({
         chainId: 97,

@@ -1,10 +1,13 @@
 import { ReactNode, useEffect } from "react";
-import { BaseNetwork, Token } from "@/hooks/base";
-import * as tokens from "./tokens.json";
+import { BaseNetwork, PayableEntity, Token } from "@/hooks/base";
+import * as tokens from "../tokens.json";
+import DFKassaABI from "@/abi/DFKassa.abi.json";
 
 import { Web3Button } from "@web3modal/react";
 import * as wagmi from "wagmi";
 import React from "react";
+import { BillSettings } from "../parseQueryString";
+import { ethers } from "ethers";
 
 
 export default class EthereumLikeNetwork extends BaseNetwork {
@@ -52,9 +55,29 @@ export default class EthereumLikeNetwork extends BaseNetwork {
         const account = wagmi.useAccount();
         return account.isConnected || account.isReconnecting || account.isConnecting
     }
+
     tokenPresets(): Token[] {
-        return tokens[this._chainName];
+        const presets = [];
+        for (const key in tokens) {
+            const element = tokens[key];
+            if (element["networks"] === undefined) {
+                continue
+            }
+            const elementNetwork = element["networks"][this.id()];
+            if (elementNetwork !== undefined) {
+                presets.push({
+                    address: element["networks"][this.id()]["address"],
+                    symbol: element["symbol"],
+                    name: element["name"],
+                    decimals: element["decimals"],
+                    oracleChainId: element["networks"][this.id()].oracle.chainId,
+                    oracleAddress: element["networks"][this.id()].oracle.address,
+                });
+            }
+        }
+        return presets;
     }
+
 
     switchNetwork(): () => void {
         const network = wagmi.useNetwork()
@@ -68,6 +91,52 @@ export default class EthereumLikeNetwork extends BaseNetwork {
         }
         console.log(networkSwitcher.data)
         return () => {}
+    }
+
+    useContractPayCallback({
+        to,
+        token,
+        amount,
+        payload
+    }: {
+        to: string,
+        token: string,
+        amount: ethers.BigNumber,
+        payload: ethers.BigNumber
+    }): () => void {
+        const fees = wagmi.useFeeData();
+        const overrides = {
+            gasPrice: fees.data?.gasPrice
+        };
+        if (token == ethers.constants.AddressZero) {
+            overrides["value"] = amount.add(fees.data?.gasPrice?.mul(30_000))
+        } else {
+            overrides["value"] = fees.data?.gasPrice?.mul(30_000)
+        }
+        const broadcastPreparation = wagmi.usePrepareContractWrite({
+            address: this._dfkassaContract,
+            abi: DFKassaABI,
+            functionName: "pay",
+            args: [
+                to, token, amount, payload
+            ],
+            overrides: overrides
+        });
+        const signedTx = wagmi.useContractWrite(
+            broadcastPreparation.config
+        );
+        const signWaiter = wagmi.useWaitForTransaction({
+                hash: signedTx.data?.hash,
+        });
+        // wagmi.useContractEvent({
+        //     address: this._dfkassaContract,
+        //     abi: DFKassaABI,
+        //     eventName: 'NewPayment',
+        //     listener(...args) {
+        //         console.log(args)
+        //     },
+        // })
+        return signedTx.write!
     }
 
 }

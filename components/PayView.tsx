@@ -2,7 +2,7 @@ import { Button, ButtonGroup, Drawer, Form, IconButton, Panel, SelectPicker, Sta
 import DetailIcon from '@rsuite/icons/Detail';
 import React, { useEffect } from "react";
 import { Network, NetworkContext } from "@/hooks/all";
-import { BaseNetwork } from "@/hooks/base";
+import { BaseNetwork, useTokenPrices } from "@/hooks/base";
 import { useParseQueryStringSettings } from "@/hooks/parseQueryString";
 
 import { ethers } from "ethers";
@@ -11,10 +11,12 @@ import { ethers } from "ethers";
 export function PaymentDetailsDrawer({
     open,
     setOpen,
+    payload,
     ...props
 }: {
     open: boolean,
-    setOpen: (_: boolean) => void
+    setOpen: (_: boolean) => void,
+    payload: string,
 }) {
     return (
         <>
@@ -30,7 +32,7 @@ export function PaymentDetailsDrawer({
                             <dt>Seller ETH address</dt>
                             <dd>0x123123123123</dd>
                             <dt>Payload</dt>
-                            <dd>1322321</dd>
+                            <dd>{payload}</dd>
                             <dt>Seller contact</dt>
                             <dd>https://t.me/example</dd>
                         </dl>
@@ -41,7 +43,7 @@ export function PaymentDetailsDrawer({
     )
 }
 
-export function PaymentHeader({amount, ...props}: { amount?: number }) {
+export function PaymentHeader({amount, payload, ...props}: { payload: string, amount?: number }) {
     const [detailesDrawerOpened, setDetailesDrawerOpened] = React.useState(false);
     return (
         <>
@@ -62,19 +64,40 @@ export function PaymentHeader({amount, ...props}: { amount?: number }) {
                     </ButtonGroup>
                 </Stack.Item>
             </Stack>
-            <PaymentDetailsDrawer setOpen={setDetailesDrawerOpened} open={detailesDrawerOpened} />
+            <PaymentDetailsDrawer setOpen={setDetailesDrawerOpened} open={detailesDrawerOpened} payload={payload} />
         </>
     )
 }
 
 export function ConfirmPaymentDropdown({
-    processConfirmation, setProcessConfirmation
+    processConfirmation,
+    setProcessConfirmation,
+    merchantAddress,
+    payload,
+    merchantContact,
+    tokenAddress,
+    tokenSymbol,
+    amount
 }: {
     processConfirmation: boolean,
-    setProcessConfirmation: (_: boolean) => void
+    setProcessConfirmation: (_: boolean) => void,
+    merchantAddress: string,
+    payload: ethers.BigNumber,
+    merchantContact: string,
+    tokenAddress: string,
+    tokenSymbol: string,
+    amount: ethers.BigNumber
 }) {
     const networkProvider = React.useContext(NetworkContext);
     const [connectWalletAndPayDrawer, setConnectWalletAndPayDrawer] = React.useState<boolean>(false);
+
+    const payCallback = networkProvider.useContractPayCallback({
+        to: merchantAddress,
+        token: tokenAddress,
+        amount: amount,
+        payload: payload
+    })
+
     return (
         <>
             <Drawer size="full" placement="bottom" open={processConfirmation} onClose={() => setProcessConfirmation(false)}>
@@ -112,15 +135,15 @@ export function ConfirmPaymentDropdown({
                     >
                         <dl>
                             <dt>Seller ETH address</dt>
-                            <dd>0x123123123123</dd>
+                            <dd>{merchantAddress}</dd>
                             <dt>Payload</dt>
-                            <dd>1322321</dd>
+                            <dd>{payload}</dd>
                             <dt>Seller contact</dt>
-                            <dd>https://t.me/example</dd>
+                            <dd>{merchantContact}</dd>
                             <dt>Network</dt>
                             <dd>{networkProvider.humanName()}</dd>
                             <dt>Token</dt>
-                            <dd>0x123123 (USDT)</dd>
+                            <dd>{tokenAddress} ({tokenSymbol})</dd>
                         </dl>
                     </Panel>
                     <br />
@@ -131,6 +154,7 @@ export function ConfirmPaymentDropdown({
                             style={{
                                 backgroundColor: "#3f51b5"
                             }}
+                            onClick={payCallback}
                         >
                             <b>Pay</b>
                         </Button>
@@ -147,14 +171,25 @@ export default function PayView() {
     const toaster = useToaster();
     const [queryStringErrorShowed, setQueryStringErrorShowed] = React.useState<boolean>(false);
 
-    const tokenPresets = Network[selectedNetworkLabel].tokenPresets();
-    const [selectedToken, setSelectedToken] = React.useState<string>("0x0");
     const [processConfirmation, setProcessConfirmation] = React.useState<boolean>(false);
 
     const isWalletConnected = Network[selectedNetworkLabel].isWalletConnected();
     Network[selectedNetworkLabel].switchNetwork();
 
     const querySettings = useParseQueryStringSettings();
+
+    const tokenPrices = useTokenPrices();
+
+    const tokenPresets = Network[selectedNetworkLabel].tokenPresets();
+    const acceptableTokens = tokenPresets.filter(
+        elem => (
+            querySettings?.settings?.tokens.find(
+                pot => pot.symbol == elem.symbol && pot.chains.find(chain => chain === Network[selectedNetworkLabel].id())
+            ) !== undefined
+        )
+    )
+
+    const [selectedToken, setSelectedToken] = React.useState<string>(null);
 
     console.log("q", querySettings)
     if (querySettings !== undefined && querySettings.settings == undefined && !queryStringErrorShowed) {
@@ -171,13 +206,31 @@ export default function PayView() {
         // throw new Error("Query string does not contain required field")
     }
 
+    const tokenAmounts: any = {};
+    querySettings?.settings?.tokens.forEach(elem => {
+        if (elem.amount == "auto") {
+            const token = acceptableTokens.find(pot => pot.symbol == elem.symbol)!;
+            const price = tokenPrices(token.oracleAddress!, token.oracleChainId!);
+            // TODO: cannot do auto price convertion
+
+            const amount = ethers.BigNumber.from(
+                querySettings?.settings?.amountInCents!
+            ).mul(ethers.BigNumber.from(10).pow(24)).div(price!);
+            console.log("SYN", amount)
+            tokenAmounts[elem.symbol] = amount;
+        } else {
+            // TODO: if merchant's custom, add 18 esxp
+            tokenAmounts[elem.symbol] = ethers.utils.parseUnits(elem.amount, 18);
+        }
+    });
+    console.log("TA", tokenAmounts)
 
     return (
         <NetworkContext.Provider value={Network[selectedNetworkLabel]}>
             <Panel
                 bordered
                 shaded
-                header={<PaymentHeader amount={querySettings?.settings?.amountInCents} />}
+                header={<PaymentHeader amount={querySettings?.settings?.amountInCents} payload={querySettings?.settings?.payload}/>}
                 style={{
                     maxWidth: 600,
                     margin: 10,
@@ -204,11 +257,8 @@ export default function PayView() {
                 <SelectPicker
                     label="Token"
                     data={
-                        tokenPresets.map(
-                            elem => ({
-                                label: elem.name,
-                                value: elem.address
-                            })
+                        acceptableTokens.map(
+                            (elem) => ({ label: `${ethers.utils.formatUnits(tokenAmounts[elem.symbol], 18)} ${elem.symbol} (${elem.name})`, value: elem.symbol })
                         )
                     }
                     value={selectedToken}
@@ -231,7 +281,16 @@ export default function PayView() {
                 <Form.HelpText style={{ marginTop: 10 }}>&nbsp;Network fee: 0.00234 ETH (~1.12$)</Form.HelpText>
                 <Form.HelpText>&nbsp;Protocol fee: 0.00087 ETH (~0.32$)</Form.HelpText>
             </Panel>
-            <ConfirmPaymentDropdown processConfirmation={processConfirmation} setProcessConfirmation={setProcessConfirmation} />
+            <ConfirmPaymentDropdown
+                processConfirmation={processConfirmation}
+                setProcessConfirmation={setProcessConfirmation}
+                merchantAddress={querySettings?.settings?.ethAddress}
+                payload={querySettings?.settings?.payload}
+                merchantContact={querySettings?.settings?.sellerContact}
+                tokenAddress={acceptableTokens.find(elem => elem.symbol == selectedToken)?.address}
+                tokenSymbol={selectedToken}
+                amount={tokenAmounts[selectedToken]}
+            />
         </NetworkContext.Provider>
 
     )

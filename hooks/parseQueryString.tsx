@@ -12,7 +12,7 @@ export interface BillSettings {
     amountInCents: number,
     tokens: MerchantPreferedToken[],
     expiresAt: number | undefined,
-    payoad: number | undefined,
+    payload: number | undefined,
     sellerContact: string | undefined
 }
 
@@ -37,11 +37,13 @@ export function useParseQueryStringSettings(): QueryParsingResponse | undefined 
         const amountInCents = params.get("amount_in_cents");
 
         if (amountInCents === null) {
-            setSettings(
-                {
-                    errorMessage: "Pass amount_in_cents value (represents checkout cost in cents)"
-                }
-            );
+            setSettings({
+                errorMessage: "Pass amount_in_cents value (represents checkout cost in cents)"
+            });
+        } else if (params.get("eth_address") === null) {
+            setSettings({
+                    errorMessage: "Pass eth_address value (represents merchant's payment recieving address)"
+            });
         } else {
             setSettings(
                 {
@@ -51,7 +53,7 @@ export function useParseQueryStringSettings(): QueryParsingResponse | undefined 
                         amountInCents: parseInt(amountInCents),
                         tokens: tokens,
                         expiresAt: expiresAt !== null ? parseInt(expiresAt) : undefined,
-                        payoad: payload !== null ? parseInt(payload) : undefined,
+                        payload: payload !== null ? parseInt(payload) : undefined,
                         sellerContact: params.get("seller_contact") ?? undefined
                     },
                 }

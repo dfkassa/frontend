@@ -2,6 +2,7 @@ import "../styles/globals.css";
 import type { AppProps } from "next/app";
 
 import * as wagmi from "wagmi";
+import { publicProvider } from "wagmi/providers/public";
 import * as wagmiChains from "@wagmi/core/chains"
 import * as web3modal from "@web3modal/ethereum";
 import { Web3Modal } from "@web3modal/react";
@@ -9,7 +10,7 @@ import { Web3Modal } from "@web3modal/react";
 import { CustomProvider } from 'rsuite';
 
 export default function App({ Component, pageProps }: AppProps) {
-    const chains = [wagmiChains.goerli, wagmiChains.bscTestnet];
+    const chains = [wagmiChains.goerli, wagmiChains.bscTestnet, wagmiChains.mainnet];
     const { provider } = wagmi.configureChains(
         chains,
         [
@@ -17,6 +18,7 @@ export default function App({ Component, pageProps }: AppProps) {
                 projectId: "55fa8a10268e7dd8e9a490f7d07ce403",
 
             }),
+            publicProvider()
         ]
     );
     const wagmiClient = wagmi.createClient({
