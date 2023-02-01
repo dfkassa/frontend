@@ -97,12 +97,14 @@ export default class EthereumLikeNetwork extends BaseNetwork {
         to,
         token,
         amount,
-        payload
+        payload,
+        onCallConfirmed
     }: {
         to: string,
         token: string,
         amount: ethers.BigNumber,
-        payload: ethers.BigNumber
+        payload: ethers.BigNumber,
+        onCallConfirmed: () => void
     }): () => void {
         const fees = wagmi.useFeeData();
         const overrides = {
@@ -122,11 +124,14 @@ export default class EthereumLikeNetwork extends BaseNetwork {
             ],
             overrides: overrides
         });
-        const signedTx = wagmi.useContractWrite(
-            broadcastPreparation.config
-        );
+        const signedTx = wagmi.useContractWrite({
+            ...broadcastPreparation.config,
+            onSuccess(data: any, variables: any, context: any) {
+                onCallConfirmed()
+            }
+        });
         const signWaiter = wagmi.useWaitForTransaction({
-                hash: signedTx.data?.hash,
+            hash: signedTx.data?.hash,
         });
         // wagmi.useContractEvent({
         //     address: this._dfkassaContract,

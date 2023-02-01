@@ -34,12 +34,14 @@ export abstract class BaseNetwork {
         to,
         token,
         amount,
-        payload
+        payload,
+        onCallConfirmed
     }: {
         to: string,
         token: string,
         amount: ethers.BigNumber,
-        payload: ethers.BigNumber
+        payload: ethers.BigNumber,
+        onCallConfirmed: () => void
     }): () => void
 }
 

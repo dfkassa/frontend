@@ -1,4 +1,4 @@
-import { Button, ButtonGroup, Drawer, Form, IconButton, Panel, SelectPicker, Stack, useToaster, Notification } from "rsuite";
+import { Button, ButtonGroup, Drawer, Form, IconButton, Panel, SelectPicker, Stack, useToaster, Notification, Steps } from "rsuite";
 import DetailIcon from '@rsuite/icons/Detail';
 import React, { useEffect } from "react";
 import { Network, NetworkContext } from "@/hooks/all";
@@ -12,11 +12,15 @@ export function PaymentDetailsDrawer({
     open,
     setOpen,
     payload,
+    merchantContact,
+    merchantRecievingAddress,
     ...props
 }: {
     open: boolean,
     setOpen: (_: boolean) => void,
     payload: string,
+    merchantContact: string,
+    merchantRecievingAddress: string,
 }) {
     return (
         <>
@@ -30,11 +34,11 @@ export function PaymentDetailsDrawer({
                     >
                         <dl>
                             <dt>Seller ETH address</dt>
-                            <dd>0x123123123123</dd>
+                            <dd>{merchantRecievingAddress}</dd>
                             <dt>Payload</dt>
                             <dd>{payload}</dd>
                             <dt>Seller contact</dt>
-                            <dd>https://t.me/example</dd>
+                            <dd>{merchantContact}</dd>
                         </dl>
                     </Panel>
                 </Drawer.Body>
@@ -43,7 +47,18 @@ export function PaymentDetailsDrawer({
     )
 }
 
-export function PaymentHeader({amount, payload, ...props}: { payload: string, amount?: number }) {
+export function PaymentHeader({
+    amount,
+    payload,
+    merchantContact,
+    merchantRecievingAddress,
+    ...props
+}: {
+    payload: string,
+    amount?: number,
+    merchantContact: string,
+    merchantRecievingAddress: string,
+}) {
     const [detailesDrawerOpened, setDetailesDrawerOpened] = React.useState(false);
     return (
         <>
@@ -64,7 +79,13 @@ export function PaymentHeader({amount, payload, ...props}: { payload: string, am
                     </ButtonGroup>
                 </Stack.Item>
             </Stack>
-            <PaymentDetailsDrawer setOpen={setDetailesDrawerOpened} open={detailesDrawerOpened} payload={payload} />
+            <PaymentDetailsDrawer
+                setOpen={setDetailesDrawerOpened}
+                open={detailesDrawerOpened}
+                payload={payload}
+                merchantContact={merchantContact}
+                merchantRecievingAddress={merchantRecievingAddress}
+            />
         </>
     )
 }
@@ -90,12 +111,17 @@ export function ConfirmPaymentDropdown({
 }) {
     const networkProvider = React.useContext(NetworkContext);
     const [connectWalletAndPayDrawer, setConnectWalletAndPayDrawer] = React.useState<boolean>(false);
+    const [awaitPaymentDrawerOpened, setAwaitPaymentDrawerOpened] = React.useState<boolean>(false);
+    const [currentStep, setCurrentStep] = React.useState<number>(0);
 
     const payCallback = networkProvider.useContractPayCallback({
         to: merchantAddress,
         token: tokenAddress,
         amount: amount,
-        payload: payload
+        payload: payload,
+        onCallConfirmed() {
+            setCurrentStep(1)
+        }
     })
 
     return (
@@ -154,11 +180,29 @@ export function ConfirmPaymentDropdown({
                             style={{
                                 backgroundColor: "#3f51b5"
                             }}
-                            onClick={payCallback}
+                            onClick={() => {
+                                setConnectWalletAndPayDrawer(false)
+                                setAwaitPaymentDrawerOpened(true)
+                                payCallback()
+                            }}
                         >
                             <b>Pay</b>
                         </Button>
                     </div>
+                </Drawer.Body>
+            </Drawer>
+            <Drawer size="md" placement="bottom" open={awaitPaymentDrawerOpened} onClose={() => setAwaitPaymentDrawerOpened(false)}>
+                <Drawer.Header>
+                <Drawer.Title><h4>Awaiting payment</h4></Drawer.Title>
+                </Drawer.Header>
+                <Drawer.Body style={{ padding: 10 }}>
+                    <Panel>
+                        <Steps current={0} vertical>
+                        <Steps.Item title="Confirm the call" description="Confirm smart contract call in your wallet" />
+                        <Steps.Item title="Block confirmation" description="Awaiting when the block is getting confirmed" />
+                        <Steps.Item title="Done!" description="Succesful! Payment is completed" />
+                    </Steps>
+                    </Panel>
                 </Drawer.Body>
             </Drawer>
         </>
@@ -189,8 +233,9 @@ export default function PayView() {
         )
     )
 
-    const [selectedToken, setSelectedToken] = React.useState<string>(null);
+    const [selectedToken, setSelectedToken] = React.useState<string | null>(null);
 
+    console.log("ST", selectedToken)
     console.log("q", querySettings)
     if (querySettings !== undefined && querySettings.settings == undefined && !queryStringErrorShowed) {
         toaster.push(
@@ -230,7 +275,13 @@ export default function PayView() {
             <Panel
                 bordered
                 shaded
-                header={<PaymentHeader amount={querySettings?.settings?.amountInCents} payload={querySettings?.settings?.payload}/>}
+                header={
+                    <PaymentHeader
+                        amount={querySettings?.settings?.amountInCents}
+                        payload={querySettings?.settings?.payload}
+                        merchantContact={querySettings?.settings?.sellerContact}
+                        merchantRecievingAddress={querySettings?.settings?.ethAddress}
+                    />}
                 style={{
                     maxWidth: 600,
                     margin: 10,
@@ -275,7 +326,7 @@ export default function PayView() {
                     block
                     appearance="primary"
                     style={{ backgroundColor: "#5ea83e" }}
-                    disabled={!isWalletConnected}
+                    disabled={!isWalletConnected || selectedToken === null}
                     onClick={() => setProcessConfirmation(true)}
                 ><b>Confirm</b></Button>
                 <Form.HelpText style={{ marginTop: 10 }}>&nbsp;Network fee: 0.00234 ETH (~1.12$)</Form.HelpText>

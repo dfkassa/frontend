@@ -17,7 +17,7 @@ export default function Pay() {
                 <hr />
                 <Stack justifyContent="space-around" style={{color: "rgba(255, 255, 255, 0.75)"}}>
                     <Stack.Item>
-                        <p><CodeIcon />&nbsp;Source code</p>
+                        <p><CodeIcon />&nbsp;<a href="https://github.com/dfkassa/frontend" style={{color: "rgba(255, 255, 255, 0.75)"}}>Source code</a></p>
                     </Stack.Item>
                     <Stack.Item>
                         <p><PeoplesIcon />&nbsp;Support</p>
