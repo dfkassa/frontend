@@ -1,7 +1,5 @@
-import { Navbar, Nav, Stack } from "rsuite";
-import CodeIcon from '@rsuite/icons/Code';
+import { Navbar, Nav } from "rsuite";
 import CreativeIcon from '@rsuite/icons/Creative';
-import PeoplesIcon from '@rsuite/icons/Peoples';
 
 export default function NavigationView() {
     return (
