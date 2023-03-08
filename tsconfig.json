@@ -30,6 +30,9 @@
       ],
       "@/hooks/*": [
         "hooks/*"
+      ],
+      "@/provider/*": [
+        "provider/*"
       ]
     }
   },

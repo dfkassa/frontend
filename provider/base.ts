@@ -1,4 +1,4 @@
-interface Bill {
+export interface Bill {
     to: string,
     token: string,
     amount: string,
@@ -12,6 +12,7 @@ export interface TXStateCallback {
 
 
 export abstract class BaseDFKassaProvider {
-    abstract pay(bill: Bill, callback: TXStateCallback): Promise<void>;
+    abstract networkId(): string;
+    abstract pay({ bill, callback }: { bill: Bill, callback: TXStateCallback }): Promise<void>;
     abstract connectWalletButton(): React.ReactNode;
 }

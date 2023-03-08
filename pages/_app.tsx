@@ -8,38 +8,48 @@ import * as web3modal from "@web3modal/ethereum";
 import { Web3Modal } from "@web3modal/react";
 
 import { CustomProvider } from 'rsuite';
+import { WASMContextProvider } from "context/WASM";
 
 export default function App({ Component, pageProps }: AppProps) {
-    const chains = [wagmiChains.goerli, wagmiChains.bscTestnet, wagmiChains.mainnet];
+    const chains = [wagmiChains.goerli, wagmiChains.mainnet];
     const { provider } = wagmi.configureChains(
         chains,
         [
             web3modal.walletConnectProvider({
-                projectId: "55fa8a10268e7dd8e9a490f7d07ce403",
+                projectId: "8e7a7f7389c2cb73d086225ec791a430",
 
             }),
-            publicProvider()
         ]
     );
     const wagmiClient = wagmi.createClient({
-        autoConnect: true,
+        // autoConnect: true,
         connectors: web3modal.modalConnectors({
             appName: "DFKassa",
+            projectId: "8e7a7f7389c2cb73d086225ec791a430",
             chains
         }),
         provider,
     });
     const ethereumClient = new web3modal.EthereumClient(wagmiClient, chains);
     return (
-        <CustomProvider theme="dark">
+        <>
             <wagmi.WagmiConfig client={wagmiClient}>
-                <Component {...pageProps} />
+            <CustomProvider theme="dark">
+                <WASMContextProvider>
+                    <Component {...pageProps} />
+                </WASMContextProvider>
+            </CustomProvider>
+
             </wagmi.WagmiConfig>
-            <Web3Modal
-                projectId="55fa8a10268e7dd8e9a490f7d07ce403"
-                ethereumClient={ethereumClient}
-                themeColor="blackWhite"
-            />
-        </CustomProvider>
+                <Web3Modal
+                    projectId="8e7a7f7389c2cb73d086225ec791a430"
+                    ethereumClient={ethereumClient}
+                    themeColor="blackWhite"
+                />
+        </>
+        // <CustomProvider theme="dark">
+
+
+        // </CustomProvider>
     )
 }
