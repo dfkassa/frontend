@@ -25,6 +25,11 @@ pub async fn launch_app(query: String) -> Result<output::LaunchOutput, JsError> 
                 id: "ETH5".to_owned(),
                 name: "Ethereum Goerli Testnet".to_owned(),
                 reciever: "0x123".to_owned()
+            },
+            output::OutputNetwork {
+                id: "ETH97".to_owned(),
+                name: "Binance Smart Chain Testnet".to_owned(),
+                reciever: "0x123".to_owned()
             }
         ],
         vec![

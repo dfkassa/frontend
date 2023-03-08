@@ -5,12 +5,13 @@
   "scripts": {
     "dev": "next dev",
     "build:wasm": "wasm-pack build wasm --release --target web",
-    "refresh:wasm": "yarn add wasm-pack && yarn build:wasm && yarn remove wasm && yarn add file:wasm/pkg",
+    "refresh:wasm": "yarn add wasm-pack && yarn remove wasm && rm -rf ./node_modules/wasm ./.next && yarn build:wasm && yarn add file:wasm/pkg",
     "build": "next build",
     "start": "next start",
     "lint": "next lint"
   },
   "dependencies": {
+    "@thirdweb-dev/chain-icons": "^1.0.5",
     "@web3-onboard/core": "^2.15.4",
     "@web3-onboard/injected-wallets": "^2.8.1",
     "@web3modal/ethereum": "^2.0.0-beta.7",
@@ -20,7 +21,7 @@
     "react": "18.2.0",
     "react-dom": "18.2.0",
     "rsuite": "^5.24.1",
-    "wagmi": "^0.8.7",
+    "wagmi": "^0.10.10",
     "wasm": "file:wasm/pkg",
     "wasm-pack": "^0.10.3",
     "web3modal": "^1.9.11"

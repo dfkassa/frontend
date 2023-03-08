@@ -4,15 +4,20 @@ import React from "react";
 import CodeIcon from "@rsuite/icons/Code";
 import PeoplesIcon from "@rsuite/icons/Peoples"
 import DetailIcon from "@rsuite/icons/Detail"
-import { ButtonGroup, Form, IconButton, Panel, SelectPicker, Stack } from "rsuite";
-import { DFKASSA_PROVIDERS } from "../provider";
+import { Button, ButtonGroup, Form, IconButton, Panel, SelectPicker, Stack } from "rsuite";
+import { DFKASSA_PROVIDERS, TOKEN_LOGO } from "../provider";
 import { BaseDFKassaProvider } from "@/provider/base";
 import { Web3Button } from "@web3modal/react";
+import { PaymentHeader } from "@/components/pay/PaymentViewHeader";
+import { Polygon } from "@thirdweb-dev/chain-icons";
+import { ConfirmPaymentDropdown } from "@/components/pay/ConfirmPaymentDropdown";
 
 export default function Pay() {
     const launch = useLauncher();
     const [selectedNetwork, setSelectedNetwork] = React.useState<string>();
     const [selectedToken, setSelectedToken] = React.useState<string>();
+    const [isWalletConnected, setIsWalletConnected] = React.useState<boolean>();
+    const [processConfirmation, setProcessConfirmation] = React.useState<boolean>(false);
 
     if (!launch) {
         return <>Loading</>
@@ -26,7 +31,12 @@ export default function Pay() {
     if (!selectedToken) {
         setSelectedToken(launch.result.tokens[0].address);
     }
+
     const provider: BaseDFKassaProvider | undefined = DFKASSA_PROVIDERS[selectedNetwork!];
+    provider?.addWalletConnectionCallback(isWalletConnected, setIsWalletConnected)
+    provider?.switchNetwork();
+    console.log(launch.result.networks)
+
     return (
         <>
             <NavigationView />
@@ -38,20 +48,7 @@ export default function Pay() {
                         maxWidth: 600,
                         margin: 10,
                     }}
-                    header={
-                        <Stack
-                            justifyContent="space-between"
-                        >
-                            <Stack.Item>
-                                <h2>$3.14</h2>
-                            </Stack.Item>
-                            <Stack.Item>
-                                <ButtonGroup>
-                                    <IconButton icon={<DetailIcon />}>Details</IconButton>
-                                </ButtonGroup>
-                            </Stack.Item>
-                        </Stack>
-                    }
+                    header={<PaymentHeader launch={launch.result} />}
                 >
                     <p>
                         Confirm payment using one of this currencies & networks
@@ -61,7 +58,7 @@ export default function Pay() {
                         label="Network"
                         data={
                             launch.result.networks.map(network => ({
-                                label: network.name,
+                                label: <div style={{display: "flex", padding: 3}}>{ DFKASSA_PROVIDERS[network.id].networkIcon() }&nbsp;{ network.name }</div>,
                                 value: network.id
                             }))
                         }
@@ -79,13 +76,15 @@ export default function Pay() {
                             .filter(token => token.network_id == selectedNetwork)
                             .map(
                                 token => ({
-                                    label: token.name,
+                                    label: <div style={{display: "flex", padding: 3}}>{ TOKEN_LOGO[token.symbol] }&nbsp;{ token.name } ({token.symbol})</div>,
                                     value: token.address
                                 })
                             )
                         }
                         value={selectedToken}
-                        onChange={(value, _) => setSelectedToken(value!)}
+                        onChange={(value, _) => {
+                            setSelectedToken(value!);
+                        }}
                         cleanable={false}
                         style={{ width: "100%" }}
                     />
@@ -95,8 +94,18 @@ export default function Pay() {
                         {provider?.connectWalletButton()}
                     </div>
                     <hr />
-                </Panel>
+                    <Button
+                        block
+                        appearance="primary"
+                        style={{ backgroundColor: "#5ea83e" }}
+                        disabled={!isWalletConnected}
+                        onClick={() => setProcessConfirmation(true)}
+                    ><b>Confirm</b></Button>
+                    <Form.HelpText style={{ marginTop: 10 }}>&nbsp;Network fee: 0.00234 ETH (~1.12$)</Form.HelpText>
+                    <Form.HelpText>&nbsp;Protocol fee: 0.00087 ETH (~0.32$)</Form.HelpText>
+                    </Panel>
             </div>
+            <ConfirmPaymentDropdown processConfirmation={processConfirmation} setProcessConfirmation={setProcessConfirmation} launch={launch.result} networkProvider={provider} />
             <footer>
                 <hr />
                 <Stack justifyContent="space-around" style={{color: "rgba(255, 255, 255, 0.75)"}}>

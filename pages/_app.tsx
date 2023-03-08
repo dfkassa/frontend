@@ -9,9 +9,10 @@ import { Web3Modal } from "@web3modal/react";
 
 import { CustomProvider } from 'rsuite';
 import { WASMContextProvider } from "context/WASM";
+import WagmiClient from "context/WagmiClient";
 
 export default function App({ Component, pageProps }: AppProps) {
-    const chains = [wagmiChains.goerli, wagmiChains.mainnet];
+    const chains = [wagmiChains.mainnet];
     const { provider } = wagmi.configureChains(
         chains,
         [
@@ -34,22 +35,20 @@ export default function App({ Component, pageProps }: AppProps) {
     return (
         <>
             <wagmi.WagmiConfig client={wagmiClient}>
-            <CustomProvider theme="dark">
-                <WASMContextProvider>
-                    <Component {...pageProps} />
-                </WASMContextProvider>
-            </CustomProvider>
+                <WagmiClient.Provider value={wagmiClient}>
+                    <CustomProvider theme="dark">
+                        <WASMContextProvider>
+                            <Component {...pageProps} />
+                        </WASMContextProvider>
+                    </CustomProvider>
+                </WagmiClient.Provider>
 
             </wagmi.WagmiConfig>
-                <Web3Modal
-                    projectId="8e7a7f7389c2cb73d086225ec791a430"
-                    ethereumClient={ethereumClient}
-                    themeColor="blackWhite"
-                />
+            <Web3Modal
+                projectId="8e7a7f7389c2cb73d086225ec791a430"
+                ethereumClient={ethereumClient}
+                themeColor="blackWhite"
+            />
         </>
-        // <CustomProvider theme="dark">
-
-
-        // </CustomProvider>
     )
 }
